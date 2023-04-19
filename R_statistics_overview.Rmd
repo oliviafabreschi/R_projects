@@ -1,0 +1,694 @@
+---
+title: "R statistics"
+author: "Olivia Fabreschi"
+date: "2022-12-22"
+output: 
+  word_document: 
+    fig_height: 7
+    fig_width: 7
+---
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+library(Rcmdr) #loading packages
+library(ggplot2) 
+library(rcompanion)
+library(FSA)
+library(flextable)
+library(knitr)
+library(pander)
+library(readr) 
+
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+
+
+
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#reading data 
+teeth_gdp <- read_csv("teeth_gdp.csv")
+View(teeth_gdp)
+```
+
+
+## Introduction
+
+Oral health is a key factor in epidemiology, with its main influencing factors related to sugar consumption and cigarette smoking (Silk et al, 2017).
+
+The interesting aspect to understand is how the latter aspects are determined. Can an association be found that determine who is more likely to consume more sugar, or smoke more? Have these factors changed over time? These aspects can have impacts on public health policies used to targeted changed behaviours to increase overall health.
+
+Current research indicates that there is a difference among genders and income in terms of oral hygeine, and that this has changed over time. For example, Abe et al (2020) found that for frequency of daily brushing, males brushed less frequently than females. Further, Singh et al (2019) found that low income is associated with poor oral health.
+
+This paper therefore aims to investigate the the following four research questions:
+
+1. Is there a correlation between a country's GDP and dental caries in children?
+2. Is there a difference in genders in the use of various tobacco products?
+3. Is there a difference in sugar consumption between 1985 and 2018?
+4. Is there a correlation between smoking and income level/age? 
+
+
+
+## Part One - correlation / linear regression. 
+
+## Introduction
+
+According to Singh et al (2019), low income is associated with poor oral health. For this reason, I will investigate if there is a correlation between a country's GDP and the number of "bad teeth per child" in various countries in the year 2004, using data from Gapminder.org.
+
+Linear regression analyses requires large amounts of continuous data, and is useful in examining whether one variable is related to another (Bryman 2021).
+
+Null hypothesis = there is no relationship between the GDP of a country and the level of tooth decay
+
+Alternate hypothesis = there is a negative relationship between the GDP of a country and the level of teeth decay in the population.
+
+Alpha = 0.05
+
+**Method**
+
+Firstly the mean, median and standard deviations of both the GDP as well as the number of tooth decay are calculated. The mean GDP is 126765, sd=180676,with the median 9530.
+
+The mean number of teeth decay is 2.045, sd=1.215, with the median 1.7.
+
+```{r, include= FALSE}
+#descriptive stat summary
+pander(summary(teeth_gdp$gdp))
+pander(summary(teeth_gdp$teeth))
+pander(sd(teeth_gdp$gdp))
+pander(sd(teeth_gdp$teeth))
+
+```
+
+```{r, include=FALSE}
+#descriptive stat summary
+sdGDP= sd(teeth_gdp$gdp)
+sdteeth= sd(teeth_gdp$teeth)
+meanGDP=mean(teeth_gdp$gdp)
+meanteeth=mean(teeth_gdp$teeth)
+```
+
+```{r, include = FALSE}
+#descriptive stat summary
+dnormteeth= dnorm(teeth_gdp$teeth, meanteeth, sdteeth)
+dnormGDP= dnorm(teeth_gdp$gdp, meanGDP, sdGDP)
+```
+
+The median value being different to the means indicate the data are not normally distributed. However plots are used for a visual evaluation.
+
+```{r, echo=FALSE}
+#freq. plot
+plot(teeth_gdp$gdp,dnormGDP, xlab="GDP", ylab="freq", main = "Distribution of GDP", col = "light blue")
+```
+Figure 1: plot showing distribution of GDP
+```{r, echo=FALSE}
+plot(teeth_gdp$teeth,dnormteeth, xlab="Nr of bad teeth", ylab="freq ", main = "Level of teeth decay", col = "blue")
+```
+Figure 2: plot showing distribution of level of teeth decay (1 lowest, 6 highest)
+
+
+For this, we see that the distribution is skewed left for the GDP, but relatively normal for the level of tooth decay. 
+
+An additional method to determine the normality of the distribution is through a normality test. A Shapiro-Wilk is appropriate if n<50, but for n>50 (n=173 in this case), a Kolmogorov–Smirnov test is more appropriate (Mishra et al, 2019). For this, the results indicate that both the GDP and teeth decay level do not follow a normal distribution, as p<0.001.
+
+```{r, include = FALSE}
+#Kolmogorov–Smirnov test to determine normality of distribution
+ks.test(dnormteeth,teeth_gdp$teeth)
+ks.test(dnormGDP,teeth_gdp$gdp)
+
+```
+
+Below you will find a scatter plot of the relationship between tooth decay and GDP:
+
+```{r, echo = FALSE}
+#scatterplot to show relationship
+plot(teeth_gdp$gdp,teeth_gdp$teeth, xlab="GDP", ylab="Number of bad teeth in children", main="scatterplot of GDP to level of teeth decay", col="dark blue")
+abline(lm(teeth_gdp$teeth ~teeth_gdp$gdp), col = "red")
+```
+Figure 4: Scatter plot showcasing GDP to level of tooth decay
+
+A Pearson’s correlation is used when comparing two continuous variables that are normally distributed, whereas Spearman's test is better used when comparing interval data with ordinal data (Bryman 2021). As neither the data on GDP nor tooth decay are normally distributed, despite them being of interval type, the Spearman analysis is most appropriate.
+
+**Result**
+
+Spearman's rank correlation was conducted to assess the relationship between GDP and number of "bad teeth". There was a weak positive correlation between the two variables, r(171) = 0.168, p <.05, and I therefore reject the null hypothesis that there is no association between GDP and level of tooth decay. 
+
+```{r, include = FALSE}
+#Spearman test to identify correlation
+pander(cor.test(teeth_gdp$teeth,teeth_gdp$gdp, method = "spearman"))
+```
+
+
+## Discussion
+
+Although the results were perhaps surprising that there is a positive correlation between GDP and level of tooth decay, it perhaps makes sense in that countries with more income are likely to have more means to access dentists, resulting in more dental decay being reported than in countries with lower GDPs. Further tests should be conducted to identify any correlation between income and oral hygiene, perhaps by changing the variables to specific country data with public healthcare to avoid any reporting bias based on income.
+
+## Part Two -  CHI SQUARE
+## Introduction
+
+Cigarettes and tobacco use are an aspect that contribute to oral hygiene (Sham et al 2003). However, one aspect that is less considered is gender when it comes to tobacco habits (Amos et al 2012).
+
+For this, I want to investigate if there is a difference in genders in how the use of various tobacco products using data from a Swedish survey (Folkhälsomyndigheten).
+
+Null hypothesis = there is no associations between gender and choice of tobacco use
+
+Alternate hypothesis = There is an association between gender and tobacco use
+
+Alpha = 0.05
+
+## Method
+
+Firstly, the data is grouped in to a contingency table as well as a barchart to get an initial overview of the frequencies.
+
+Table x: Contingency table of tobacco preference per gender
+```{r, echo=FALSE}
+#reading data
+library(readxl)
+tobacco <- read_excel("tobacco.xlsx")
+View(tobacco)
+#Firstly, the data is grouped in to a contingency table to get an overview of the frequencies.
+tobaccoTable = table(tobacco$Gender,tobacco$Type)
+View(tobaccoTable)
+
+
+#making cross table
+library(gmodels)
+CrossTable(tobacco$Type, tobacco$Gender)
+```
+
+```{r, echo=FALSE}
+
+#barplot
+barplot(tobaccoTable, ylab="count", xlab="Tobacco type", legend = rownames(tobaccoTable), col=c("light blue", "lightskyblue"), main = "Barplot of tobacco use per gender")
+```
+Figure 1: Barplot of tobacco use per gender
+
+The Chi-squared test shows is the most appropriate method to use to investigate whether there is a difference in proportions across categorical variables. The test identifies whether there is any significance in the result obtained when comparing the values to what is expected. However, it is not able to give information on the strength of the association (Bryman 2021, p1463).
+
+In this instance, the expected outcome would be that there is a 1/4 chance of each type of tobacco belonging to the participants, with an equal frequency amongst genders.
+
+```{r, include=FALSE}
+#chisquare test to show difference in proportions across categories
+chi=chisq.test(tobaccoTable, p = c(1/4, 1/4, 1/4,1/4))
+pander(chi, caption = "1: Pearson's Chi-squared test")
+```
+
+When doing a Chi squared test, we can compare the expected values compared with the observed values. 
+
+## Result
+
+The result of the Chi-squared test is χ2(3) = 4.604, p >.05. As p>.05, I fail to reject the null hypothesis, indicating that there is no association between gender and tobacco preference.
+
+
+## Discussion
+
+The results show that there is no significant difference amongst choice of tobacco use amongst the genders, nor in the gender representation of each category of tobacco. The data sample is very small however, which can affect the reliability and validity of the results. 
+
+
+
+## Part Three - T-TEST
+
+## Introduction
+
+There is evidence that sugar intake is associated with dental caries, and that sugar intake is increasing as countries develop (Ismail et al, 1997).
+
+Because of this, I want to investigate is there is a difference in sugar consumption between 1985 and 2018, using data from Gapminder.org.
+
+Null hypothesis = There is no difference between the mean sugar consumption in 1985 and 2018.
+
+Alternate hypothesis = There is a difference between the mean sugar consumption in 1985 and 2018.
+
+Alpha = 0.05
+
+
+
+
+```{r, include=FALSE}
+
+#sugar in 1985 and 2018
+library(readxl)
+sugar2 <- read_excel("sugar2.xlsx")
+View(sugar2)  
+
+#sugar pivoted in 1985 and 2018
+library(readxl)
+sugar <- read_excel("sugar.xlsx")
+View(sugar)    
+
+library(gplots)
+
+```
+
+```{r, include=FALSE}
+#description of the sugar data, showing that overall mean and median higher in 2018 than 1985 
+library( psych )
+describe(sugar)
+
+```
+
+## Method
+
+The mean, median, and standard deviations are calculated to view if there is a difference. For this, it was found that M = 76.75, SD = 44.43 for the 1985 group, compared with M = 98.83, SD = 58.55 for the 1985 group.
+
+```{r include=FALSE}
+pander(aggregate(sugar2$`Sugar consumption`, list(sugar2$Year), FUN=mean))
+
+```
+
+
+```{r, include=FALSE}
+#histogram of sugar consumption between the years
+c1 <- rgb(173,216,230,max = 255, alpha = 80, names = "lt.blue")
+c2 <- rgb(255,192,203, max = 255, alpha = 80, names = "lt.pink")
+ hgA <- hist(sugar$"1985", breaks = 30, plot = FALSE) 
+ hgB <- hist(sugar$"2018", breaks = 50, plot = FALSE) 
+ plot(hgB, col = c1, main = "Histogram of sugar consumption in 1985 vs 2018", xlab="sugar consunmption")
+ plot(hgA, col = c2, add = TRUE) 
+ legend("topright", c("1985", "2018"), fill=c("pink", "light blue"))
+```
+
+This can also be demonstrated visually through boxplots:
+
+```{r, echo = FALSE}
+#boxplot showing different years and sugar consumption
+boxplot( `Sugar consumption`~  `Year`, col=c("light blue "), data = sugar2,main = "Sugar consumption in 1985 vs 2018")
+
+```
+Figure x: box plots showcasing differences between sugar consumption between the years.
+
+A Paired Sample T-test is then conducted to observe if there is a difference between the means.
+
+```{r, include=FALSE}
+t.test(sugar$"2018", sugar$"1985", paired = TRUE)
+```
+
+```{r, include=FALSE}
+#It is also possible to use the dplyr package to group analyse these simultaneously.
+
+library(dplyr)
+dplr = group_by(sugar2, Year)%>% summarise(count = n(), median = median(`Sugar consumption`, na.rm = TRUE), IQR = IQR(`Sugar consumption`, na.rm = TRUE))
+
+pander(dplr)
+```
+
+The Wilcox test can be used as the W value from the Wilcoxon test indicates that the larger the value for W, the larger the difference between the two groups. 
+
+```{r, include=FALSE}
+#wilcox.test(x, y, alternative = "two.sided")
+res <- wilcox.test(`Sugar consumption` ~ Year, data = sugar2,       exact = FALSE)
+pander(res)
+```
+
+## Result
+
+The paired T-test showed that there was a significant difference in the sugar consumption for 1985 (M=76.75, SD = 44.43) and 2018 (M= 98.83, SD = 58.55) with the conditions t(144)=6.659, p <.001.
+
+The result of the Wilcox test is that W = 8300 and p<0.05. 
+
+The result of these test lead to the rejection of the null hypothesis that the sugar consumption between the two periods are the same, and we can conclude that there is a difference in sugar consumption between the two time periods.
+
+## Discussion
+
+The mean and median sugar intake is higher in 2018 than 1985,with statistical significance from the T-test and Wilcoxon tests, indicating that the sugar consumption is indeed higher than it was previously. This has implications when considering oral hygiene, and further tests could be conducted to establish associations between sugar intake and oral health.
+
+
+## Part Four - TWO WAY ANOVA
+
+
+## Introduction 
+
+Interventions to target smoking differ depending on an individual's age and social class. Therefore, it is interesting to identify whether there is a correlation between smoking and income level/age, using data from https://www.itl.nist.gov/div898/education/anova/smokers.dat.
+
+Null hypothesis = there is no difference in the percentage of smokers between the various age or income groups, i.e. that the population means are equal.
+
+Alternate hypothesis = at least two of the population means are not equal.
+
+Alpha = 0.05
+
+## Method
+
+
+```{r, echo=FALSE}
+#reading data
+library(readxl)
+incom_smoking_age <- read_excel("incom_smoking_age.xlsx")
+View(incom_smoking_age)                                                                      
+ 
+```
+
+
+An initial plot of means is first conducted over the different proportion of cigarette smokers from age/income to see if there is an initial difference between the mean values.
+
+```{r, include=FALSE}
+
+#plot of means to identify initial difference
+Sum= Summarize(`% smokers` ~(`income level` + Age), data=incom_smoking_age)
+
+Sum$se = (Sum$sd / sqrt(Sum$n))
+
+```
+
+```{r, echo=FALSE}
+#plot of means
+qplot(x = `income level`,  y    =  mean, color = Age,  data =  Sum) 
+geom_errorbar(aes(ymin = mean - se, ymax = mean + se,  width = 0.15))
+```
+Figure x: plot of means of income level and age groups to cigarette smoking
+
+A box plot can also provide a visual overview, however it shows the median values and not the mean values. 
+
+```{r, echo=FALSE}
+#get boxplots from this
+plot(`% smokers`~factor(`income level`)+factor(Age),col=c("light blue "), data=incom_smoking_age )
+```
+Figure x: box plot over income level and age groups to cigarette smoking
+```{r, include=FALSE}
+#stacking the data
+stacked_df <- stack(incom_smoking_age)
+ head(stacked_df)
+```
+
+
+At first glance, it seems that there is a difference, in particular in regards to income level and smoking prevalence.
+
+A two-way ANOVA is then conducted because more than two levels of the same variable are being tested, to compare these groups on their average performance as well as identify any interactions.
+
+## Result
+
+The plot of factor level combinations vs standardised residuals show that there is an unbalanced distribution between the levels of smoking between the different groups.
+
+When looking at the factorial anova, we see the below:
+```{r, include=FALSE}
+#factorial anova
+m3 <- aov(`% smokers` ~ `income level` + Age + `income level`*Age, data = incom_smoking_age) 
+```
+
+```{r, echo=FALSE}
+
+pander(summary(m3))
+```
+
+When considering the income level, we fail to reject the null hypothesis (H1) that there is no difference between the habitat means on smoking, with F(1,11)= 1.409, p>.05.
+
+When considering the age groups, we reject the null hypothesis (H2) that there is no difference between the smoking prevalence depending on age, as F(1,11)= 17.27. p<.05.
+
+Considering the interaction between income level and age (H3), we fail to reject the null hypothesis that there is no interaction between these on smoking prevalence, with F(1,11)= 1.10 p>.05.
+
+When conducting a posthoc analysis through an interaction plot, we see the interactions between the different income groups and ages and the smoking habits.
+
+```{r, echo=FALSE}
+interaction.plot(x.factor = incom_smoking_age$`income level`, trace.factor = incom_smoking_age$Age,response =incom_smoking_age$`% smokers`, ylab="Percentage of smokers", xlab= "Income level", trace.label = "Age group", col=c("red","blue","turquoise"))
+
+#same way as showing the above!!! but can play around with x factor and trace factor
+```
+Figure x: interaction plot between income level and age groups to cigarette smoking
+
+Here, we see that there is an overall higher smoking prevalence amongst the 1 and 2 age groups. For the higher income levels, the prevalence of smoking is lower for the lower age groups, but starts to increase for the older age group as income increases.
+
+
+## Discussion
+
+The result is that the difference in age plays a larger part in determining the proportion of smoking rather than the different income levels, in particular at lower income levels. However, as income increases, there seems to be less of an age influencing factor in the proportion of smoking. 
+
+
+## Conclusion
+
+In conclusion, this paper investigated the research questions related to GDP and dental care, gender and tobacco, sugar consumption over time, and income level/age to tobacco. Although the findings did not always find significant associations (failing to reject the null hypothesis), it provided an insight in to possible correlations between demographic factors related to oral hygeine, where there is room to be expanded on further in future studies.
+
+
+## References
+
+Abe M, Mitani A, Hoshi K, Yanagimoto S. (2020) Large Gender Gap in Oral Hygiene Behavior and Its Impact on Gingival Health in Late Adolescence. Int J Environ Res Public Health. 2020 Jun 18;17(12):4394. doi: 10.3390/ijerph17124394. PMID: 32570913; PMCID: PMC7345042.
+
+Amos, A., Greaves, L., Nichter, M., & Bloch, M. (2012). Women and tobacco: a call for including gender in tobacco control research, policy and practice. Tobacco control, 21(2), 236-243.
+
+Attin T, Hornecker E (2005). Tooth brushing and oral health: how frequently and when should tooth brushing be performed? Oral Health Prev Dent. 2005;3(3):135-40. PMID: 16355646.
+
+Eidenhardt Z, Ritsert A, Shankar-Subramanian S, Ebel S, Margraf-Stiksrud J, Deinzer R. (2021) Tooth brushing performance in adolescents as compared to the best-practice demonstrated in group prophylaxis programs: an observational study. BMC Oral Health. 2021 Jul 20;21(1):359. doi: 10.1186/s12903-021-01692-z. PMID: 34284767; PMCID: PMC8290393.
+
+Ismail, A. I., Tanzer, J. M., & Dingle, J. L. (1997). Current trends of sugar consumption in developing societies. Community dentistry and oral epidemiology, 25(6), 438-443.
+
+Mishra, P., Pandey, C. M., Singh, U., Gupta, A., Sahu, C., & Keshri, A. (2019). Descriptive statistics and normality tests for statistical data. Annals of cardiac anaesthesia, 22(1), 67–72. https://doi.org/10.4103/aca.ACA_157_18
+
+Smoking and income data from https://www.itl.nist.gov/div898/education/anova/smokers.dat 
+
+Sugar, Teeth and GDP data from https://www.gapminder.org/data/ 
+Swedish Teeth data from http://fohm-app.folkhalsomyndigheten.se/Folkhalsodata/pxweb/sv/A_Folkhalsodata/A_Folkhalsodata__C_HBSC__Levnadsvanor__Matvanor/E_Tandborstvanor.px/ 
+
+Silk, H., & Kwok, A. (2017). Addressing adolescent oral health: a review. Pediatrics in review, 38(2), 61-68.
+
+Singh, A., Peres, M. A., & Watt, R. G. (2019). The relationship between income and oral health: a critical review. Journal of dental research, 98(8), 853-860.
+
+
+Telivuo, M., Kallio, P., Berg, M. A., Korhonen, H. J., & Murtomaa, H. (1995). Smoking and oral health: a population survey in Finland. Journal of Public Health Dentistry, 55(3), 133-138.
+
+Sham, A. S. K., Cheung, L. K., Jin, L. J., & Corbet, E. F. (2003). The effects of tobacco use on oral health. Hong Kong Medical Journal.
+
+
+## Appendix for code
+
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+library(Rcmdr) #this chunk start RCommander 
+library(ggplot2) #this cunks starts ggplot2
+library(rcompanion)
+library(FSA)
+
+#if you have used other packeges you may need to include them here
+
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+
+library(flextable)
+library(knitr)
+library(pander)
+
+```
+
+```{r, message=FALSE, warning=FALSE, echo=TRUE}
+library(readr)
+teeth_gdp <- read_csv("teeth_gdp.csv")
+View(teeth_gdp)
+```
+
+
+
+## Part One - correlation / linear regression. 
+
+
+
+```{r, echo=TRUE}
+pander(summary(teeth_gdp$gdp))
+pander(summary(teeth_gdp$teeth))
+pander(sd(teeth_gdp$gdp))
+pander(sd(teeth_gdp$teeth))
+
+```
+
+```{r, echo=TRUE}
+sdGDP= sd(teeth_gdp$gdp)
+sdteeth= sd(teeth_gdp$teeth)
+meanGDP=mean(teeth_gdp$gdp)
+meanteeth=mean(teeth_gdp$teeth)
+```
+
+```{r, echo=TRUE}
+dnormteeth= dnorm(teeth_gdp$teeth, meanteeth, sdteeth)
+dnormGDP= dnorm(teeth_gdp$gdp, meanGDP, sdGDP)
+```
+
+
+```{r, echo=TRUE}
+plot(teeth_gdp$gdp,dnormGDP, xlab="GDP", ylab="freq", main = "Distribution of GDP", col = "light blue")
+```
+
+Figure 1: plot showing distribution of GDP
+```{r, echo=TRUE}
+plot(teeth_gdp$teeth,dnormteeth, xlab="Nr of bad teeth", ylab="freq ", main = "Level of teeth decay", col = "blue")
+```
+
+
+```{r, echo=TRUE}
+ks.test(dnormteeth,teeth_gdp$teeth)
+ks.test(dnormGDP,teeth_gdp$gdp)
+
+```
+
+
+```{r, echo=TRUE}
+plot(teeth_gdp$gdp,teeth_gdp$teeth, xlab="GDP", ylab="Number of bad teeth in children", main="scatterplot of GDP to level of teeth decay", col="dark blue")
+abline(lm(teeth_gdp$teeth ~teeth_gdp$gdp), col = "red")
+```
+Figure 4: Scatter plot showcasing GDP to level of tooth decay
+
+
+
+**Result**
+
+
+
+```{r, echo=TRUE}
+pander(cor.test(teeth_gdp$teeth,teeth_gdp$gdp, method = "spearman"))
+```
+
+
+
+## Part Two -  CHI SQUARE
+
+```{r, echo=TRUE}
+
+library(readxl)
+tobacco <- read_excel("tobacco.xlsx")
+View(tobacco)
+#Firstly, the data is grouped in to a contingency table to get an overview of the frequencies.
+tobaccoTable = table(tobacco$Gender,tobacco$Type)
+View(tobaccoTable)
+
+
+#making cross table
+library(gmodels)
+CrossTable(tobacco$Type, tobacco$Gender)
+```
+
+```{r, echo=TRUE}
+
+#barplot
+barplot(tobaccoTable, ylab="count", xlab="Tobacco type", legend = rownames(tobaccoTable), col=c("light blue", "lightskyblue"), main = "Barplot of tobacco use per gender")
+```
+Figure 1: Barplot of tobacco use per gender
+
+
+
+```{r, echo=TRUE}
+chi=chisq.test(tobaccoTable, p = c(1/4, 1/4, 1/4,1/4))
+pander(chi, caption = "1: Pearson's Chi-squared test")
+```
+
+
+
+
+
+## Part Three - T-TEST
+
+
+
+```{r, echo=TRUE}
+
+#sugar in 1985 and 2018
+library(readxl)
+sugar2 <- read_excel("sugar2.xlsx")
+View(sugar2)  
+
+#sugar pivoted in 1985 and 2018
+library(readxl)
+sugar <- read_excel("sugar.xlsx")
+View(sugar)    
+
+library(gplots)
+
+```
+
+```{r, echo=TRUE}
+#description of the sugar data, showing that overall mean and median higher in 2018 than 1985 
+library( psych )
+describe(sugar)
+
+```
+
+
+```{r , echo=TRUE}
+pander(aggregate(sugar2$`Sugar consumption`, list(sugar2$Year), FUN=mean))
+
+```
+
+
+```{r, echo=TRUE}
+#histogram of sugar consumption between the years
+c1 <- rgb(173,216,230,max = 255, alpha = 80, names = "lt.blue")
+c2 <- rgb(255,192,203, max = 255, alpha = 80, names = "lt.pink")
+ hgA <- hist(sugar$"1985", breaks = 30, plot = FALSE) 
+ hgB <- hist(sugar$"2018", breaks = 50, plot = FALSE) 
+ plot(hgB, col = c1, main = "Histogram of sugar consumption in 1985 vs 2018", xlab="sugar consunmption")
+ plot(hgA, col = c2, add = TRUE) 
+ legend("topright", c("1985", "2018"), fill=c("pink", "light blue"))
+```
+
+
+```{r, echo=TRUE}
+#boxplot showing different years and sugar consumption
+boxplot( `Sugar consumption`~  `Year`, col=c("light blue "), data = sugar2,main = "Sugar consumption in 1985 vs 2018")
+
+```
+Figure x: box plots showcasing differences between sugar consumption between the years.
+
+
+
+```{r, echo=TRUE}
+t.test(sugar$"2018", sugar$"1985", paired = TRUE)
+```
+
+```{r, echo=TRUE}
+#It is also possible to use the dplyr package to group analyse these simultaneously.
+
+library(dplyr)
+dplr = group_by(sugar2, Year)%>% summarise(count = n(), median = median(`Sugar consumption`, na.rm = TRUE), IQR = IQR(`Sugar consumption`, na.rm = TRUE))
+
+pander(dplr)
+```
+
+
+
+```{r, echo=TRUE}
+#wilcox.test(x, y, alternative = "two.sided")
+res <- wilcox.test(`Sugar consumption` ~ Year, data = sugar2,       exact = FALSE)
+pander(res)
+```
+
+## Part Four - TWO WAY ANOVA
+
+```{r, echo=TRUE}
+
+library(readxl)
+incom_smoking_age <- read_excel("incom_smoking_age.xlsx")
+View(incom_smoking_age)                                                                      
+ 
+```
+
+
+```{r, echo=TRUE}
+Sum= Summarize(`% smokers` ~(`income level` + Age), data=incom_smoking_age)
+
+Sum$se = (Sum$sd / sqrt(Sum$n))
+
+```
+
+```{r, echo=TRUE}
+#plot of means
+qplot(x = `income level`,  y    =  mean, color = Age,  data =  Sum) 
+geom_errorbar(aes(ymin = mean - se, ymax = mean + se,  width = 0.15))
+```
+
+```{r, echo=TRUE}
+#get boxplots from this
+plot(`% smokers`~factor(`income level`)+factor(Age),col=c("light blue "), data=incom_smoking_age )
+```
+Figure x: box plot over income level and age groups to cigarette smoking
+```{r, echo=TRUE}
+#stacking the data
+stacked_df <- stack(incom_smoking_age)
+ head(stacked_df)
+```
+
+```{r, echo=TRUE}
+m3 <- aov(`% smokers` ~ `income level` + Age + `income level`*Age, data = incom_smoking_age) 
+```
+
+```{r, echo=TRUE}
+
+pander(summary(m3))
+```
+
+
+```{r, echo=TRUE}
+interaction.plot(x.factor = incom_smoking_age$`income level`, trace.factor = incom_smoking_age$Age,response =incom_smoking_age$`% smokers`, ylab="Percentage of smokers", xlab= "Income level", trace.label = "Age group", col=c("red","blue","turquoise"))
+
+#can play around with x factor and trace factor
+```
